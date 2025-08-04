@@ -5,62 +5,18 @@ import {
   CardContent,
   Typography,
   Grid,
-  useTheme,
-  CircularProgress,
 } from '@mui/material';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import { useQuery } from 'react-query';
 
-interface AccountBalance {
-  _id: string;
-  total: number;
-  count: number;
-}
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+const mockBalances = [
+  { _id: 'Asset', total: 75000, count: 5 },
+  { _id: 'Liability', total: 25000, count: 3 },
+  { _id: 'Equity', total: 50000, count: 2 },
+  { _id: 'Revenue', total: 100000, count: 4 },
+  { _id: 'Expense', total: 30000, count: 6 },
+];
 
 export const AccountBalances: React.FC = () => {
-  const theme = useTheme();
-
-  const { data: balances, isLoading } = useQuery<AccountBalance[]>(
-    'accountBalances',
-    async () => {
-      const response = await fetch('http://localhost:5000/api/accounts/balances');
-      if (!response.ok) {
-        throw new Error('Failed to fetch account balances');
-      }
-      return response.json();
-    }
-  );
-
-  if (isLoading) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  const totalBalance = balances?.reduce((sum, item) => sum + item.total, 0) || 0;
+  const totalBalance = mockBalances.reduce((sum, item) => sum + item.total, 0);
 
   return (
     <Box>
@@ -90,7 +46,7 @@ export const AccountBalances: React.FC = () => {
                 Total Accounts
               </Typography>
               <Typography variant="h4">
-                {balances?.reduce((sum, item) => sum + item.count, 0) || 0}
+                {mockBalances.reduce((sum, item) => sum + item.count, 0)}
               </Typography>
             </CardContent>
           </Card>
@@ -102,81 +58,35 @@ export const AccountBalances: React.FC = () => {
               <Typography color="textSecondary" gutterBottom>
                 Account Types
               </Typography>
-              <Typography variant="h4">{balances?.length || 0}</Typography>
+              <Typography variant="h4">{mockBalances.length}</Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Bar Chart */}
-        <Grid item xs={12} md={8}>
+        {/* Account Types List */}
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Account Balances by Type
+                Account Types Overview
               </Typography>
-              <Box sx={{ height: 400 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={balances}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="_id" />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value: number) =>
-                        `$${value.toLocaleString()}`
-                      }
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="total"
-                      name="Balance"
-                      fill={theme.palette.primary.main}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Pie Chart */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Account Distribution
-              </Typography>
-              <Box sx={{ height: 400 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={balances}
-                      dataKey="count"
-                      nameKey="_id"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      label
-                    >
-                      {balances?.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Box>
+              <Grid container spacing={2}>
+                {mockBalances.map((balance) => (
+                  <Grid item xs={12} sm={6} md={4} key={balance._id}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="h6">{balance._id}</Typography>
+                        <Typography variant="h4" color="primary">
+                          ${balance.total.toLocaleString()}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {balance.count} accounts
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
             </CardContent>
           </Card>
         </Grid>

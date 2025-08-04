@@ -9,27 +9,8 @@ import {
   Grid,
   IconButton,
   MenuItem,
-  useTheme,
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { useFormik } from 'formik';
-import * as yup from 'yup';
-import { NumericFormat } from 'react-number-format';
-
-const validationSchema = yup.object({
-  date: yup.date().required('Date is required'),
-  description: yup.string().required('Description is required'),
-  entries: yup.array().of(
-    yup.object({
-      account: yup.string().required('Account is required'),
-      debit: yup.number().min(0, 'Debit must be positive'),
-      credit: yup.number().min(0, 'Credit must be positive'),
-    })
-  ).min(2, 'At least two entries are required'),
-});
 
 const mockAccounts = [
   { id: '1', name: 'Cash' },
@@ -49,43 +30,32 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
   onSubmit,
   initialValues,
 }) => {
-  const theme = useTheme();
   const [totalDebits, setTotalDebits] = useState(0);
   const [totalCredits, setTotalCredits] = useState(0);
-
-  const formik = useFormik({
-    initialValues: initialValues || {
-      date: new Date(),
-      description: '',
-      entries: [
-        { account: '', debit: 0, credit: 0 },
-        { account: '', debit: 0, credit: 0 },
-      ],
-    },
-    validationSchema,
-    onSubmit: (values) => {
-      onSubmit(values);
-    },
-  });
+  const [entries, setEntries] = useState([
+    { account: '', debit: 0, credit: 0 },
+    { account: '', debit: 0, credit: 0 },
+  ]);
+  const [description, setDescription] = useState('');
 
   const handleAddEntry = () => {
-    formik.setFieldValue('entries', [
-      ...formik.values.entries,
+    setEntries([
+      ...entries,
       { account: '', debit: 0, credit: 0 },
     ]);
   };
 
   const handleRemoveEntry = (index: number) => {
-    const newEntries = formik.values.entries.filter((_, i) => i !== index);
-    formik.setFieldValue('entries', newEntries);
+    const newEntries = entries.filter((_, i) => i !== index);
+    setEntries(newEntries);
   };
 
   const calculateTotals = () => {
-    const debits = formik.values.entries.reduce(
+    const debits = entries.reduce(
       (sum, entry) => sum + (entry.debit || 0),
       0
     );
-    const credits = formik.values.entries.reduce(
+    const credits = entries.reduce(
       (sum, entry) => sum + (entry.credit || 0),
       0
     );
@@ -95,7 +65,16 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
 
   React.useEffect(() => {
     calculateTotals();
-  }, [formik.values.entries]);
+  }, [entries]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      date: new Date(),
+      description,
+      entries,
+    });
+  };
 
   return (
     <Card>
@@ -104,34 +83,26 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
           New Journal Entry
         </Typography>
 
-        <form onSubmit={formik.handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Date"
-                  value={formik.values.date}
-                  onChange={(date) => formik.setFieldValue('date', date)}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      error: formik.touched.date && Boolean(formik.errors.date),
-                      helperText: formik.touched.date && formik.errors.date,
-                    },
-                  }}
-                />
-              </LocalizationProvider>
+              <TextField
+                fullWidth
+                label="Date"
+                type="date"
+                defaultValue={new Date().toISOString().split('T')[0]}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
             </Grid>
 
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="Description"
-                name="description"
-                value={formik.values.description}
-                onChange={formik.handleChange}
-                error={formik.touched.description && Boolean(formik.errors.description)}
-                helperText={formik.touched.description && formik.errors.description}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </Grid>
 
@@ -140,7 +111,7 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
                 <Typography variant="h6">Entries</Typography>
               </Box>
 
-              {formik.values.entries.map((entry, index) => (
+              {entries.map((entry, index) => (
                 <Box
                   key={index}
                   sx={{
@@ -153,17 +124,12 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
                   <TextField
                     select
                     label="Account"
-                    name={`entries.${index}.account`}
                     value={entry.account}
-                    onChange={formik.handleChange}
-                    error={
-                      formik.touched.entries?.[index]?.account &&
-                      Boolean(formik.errors.entries?.[index]?.account)
-                    }
-                    helperText={
-                      formik.touched.entries?.[index]?.account &&
-                      formik.errors.entries?.[index]?.account
-                    }
+                    onChange={(e) => {
+                      const newEntries = [...entries];
+                      newEntries[index].account = e.target.value;
+                      setEntries(newEntries);
+                    }}
                     sx={{ flex: 2 }}
                   >
                     {mockAccounts.map((account) => (
@@ -173,39 +139,31 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
                     ))}
                   </TextField>
 
-                  <NumericFormat
-                    customInput={TextField}
+                  <TextField
                     label="Debit"
-                    name={`entries.${index}.debit`}
+                    type="number"
                     value={entry.debit}
-                    onValueChange={(values) => {
-                      formik.setFieldValue(
-                        `entries.${index}.debit`,
-                        values.floatValue || 0
-                      );
+                    onChange={(e) => {
+                      const newEntries = [...entries];
+                      newEntries[index].debit = parseFloat(e.target.value) || 0;
+                      setEntries(newEntries);
                     }}
-                    thousandSeparator
-                    prefix="$"
                     sx={{ flex: 1 }}
                   />
 
-                  <NumericFormat
-                    customInput={TextField}
+                  <TextField
                     label="Credit"
-                    name={`entries.${index}.credit`}
+                    type="number"
                     value={entry.credit}
-                    onValueChange={(values) => {
-                      formik.setFieldValue(
-                        `entries.${index}.credit`,
-                        values.floatValue || 0
-                      );
+                    onChange={(e) => {
+                      const newEntries = [...entries];
+                      newEntries[index].credit = parseFloat(e.target.value) || 0;
+                      setEntries(newEntries);
                     }}
-                    thousandSeparator
-                    prefix="$"
                     sx={{ flex: 1 }}
                   />
 
-                  {formik.values.entries.length > 2 && (
+                  {entries.length > 2 && (
                     <IconButton
                       onClick={() => handleRemoveEntry(index)}
                       color="error"
@@ -231,7 +189,7 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
                   justifyContent: 'space-between',
                   mb: 3,
                   p: 2,
-                  backgroundColor: theme.palette.background.default,
+                  backgroundColor: '#f8fafc',
                   borderRadius: 1,
                 }}
               >
@@ -257,6 +215,13 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
 
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                 <Button variant="outlined" onClick={() => formik.resetForm()}>
+                <Button variant="outlined" onClick={() => {
+                  setDescription('');
+                  setEntries([
+                    { account: '', debit: 0, credit: 0 },
+                    { account: '', debit: 0, credit: 0 },
+                  ]);
+                }}>
                   Reset
                 </Button>
                 <Button
